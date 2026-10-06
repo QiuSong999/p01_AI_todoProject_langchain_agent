@@ -139,9 +139,9 @@ def todo_by_AI(message):
        ↓
     Agent思考
        ↓
-    选择Tool
+    选择Tool（以及确定tools的执行顺序）
        ↓
-    执行Tool
+    执行Tool（Prompt + Parser → 辅助Tool内部的AI业务处理）
        ↓
     得到Tool结果
        ↓
@@ -152,4 +152,9 @@ def todo_by_AI(message):
     final_message.content
        ↓
     返回给用户
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Agent → 负责决定“调用哪个Tool、什么时候调用、是否继续调用”
+而：Prompt + Parser → 辅助Tool内部的AI业务处理
+
+⭐⭐⭐Agent负责“调度”，Tool负责“执行”，Prompt + Parser负责帮助Tool完成需要AI理解的具体业务。
 """

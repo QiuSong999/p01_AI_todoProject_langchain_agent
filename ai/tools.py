@@ -1,4 +1,10 @@
-"""查询工具函数"""
+"""
+    tools.py
+        ↓
+    告诉 Agent：
+    “你现在拥有这些工具”
+★★★Agent负责确定 Tool 的执行顺序，Prompt 和 Parser 辅助 Tool 工作
+"""
 
 from langchain_core.tools import tool   #让我们能够使用 LangChain 的 @tool
 
