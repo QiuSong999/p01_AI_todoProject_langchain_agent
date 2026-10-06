@@ -24,6 +24,8 @@ from fastapi import HTTPException
 from schema import TodoAdd, AITodoUpdate,AITodoMatch
 
 from langchain_core.output_parsers import PydanticOutputParser  # 导入LangChain的Pydantic输出解析器。
+
+from langchain_core.tools import tool       #让我们能够使用 LangChain 的 @tool
 # 作用：
 # 1. 根据指定的Pydantic模型（例如TodoAdd、AIAction）检查AI输出格式。
 # 2. 将AI返回的JSON结果直接转换成对应的Pydantic对象
@@ -73,11 +75,17 @@ def match_todo_id_by_AI(message):
 
 
 ### 1、定义AI添加 Todo/数据 的业务函数
+@tool
 def addtodo_by_AI(message):
+    """
+    根据用户的自然语言要求新增Todo任务。
+    message：用户新增Todo的自然语言描述。
+    """
     try:
         now_time = datetime.now()
 
-        prompt = add_prompt()       #AI新增Todo的Prompt模板,这里返回的是PromptTemplate对象，不是最终发送给AI的完整提示词。真实数据会在chain.invoke()时传入。
+        prompt = add_prompt()       #获取新增Todo的ChatPromptTemplate模板。,这里返回的是PromptTemplate对象，
+                                    #不是最终发送给AI的完整提示词。真实数据会在chain.invoke()时传入。
         parser = PydanticOutputParser(pydantic_object=TodoAdd)          #创建Pydantic输出解析器。
         # 作用：1. 按照TodoAdd模型检查AI返回的数据结构。2. 将AI返回的JSON结果直接转换成TodoAdd对象。
 
@@ -143,7 +151,16 @@ AI新增流程：
 """
 
 ### 2、定义AI修改 Todo/数据 的业务函数
+@tool
 def updatetodo_by_AI(message):
+    """
+    根据用户的自然语言要求修改Todo任务。
+
+    适用于用户明确要求修改、完成、更新Todo任务的情况。
+    该Tool会根据用户的自然语言自动识别要修改的Todo任务。
+
+    message：用户修改Todo的自然语言描述。
+    """
     try:
         now_time = datetime.now()
 
@@ -276,7 +293,16 @@ update_all()
 
 
 ### 3、定义AI删除数据函数
+@tool
 def deletetodo_by_AI(message):
+    """
+    根据用户的自然语言要求删除Todo任务。
+
+    适用于用户明确要求删除、移除Todo任务的情况。
+    该Tool会根据用户的自然语言自动识别要删除的Todo任务。
+
+    message：用户删除Todo的自然语言描述。
+    """
     try:
         todo_id = match_todo_id_by_AI(message)
 

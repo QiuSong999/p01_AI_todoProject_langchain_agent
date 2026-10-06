@@ -1,5 +1,43 @@
-# 从 LangChain 模型客户端模块导入 llm。
-# llm 是 ChatOpenAI 创建的模型对象，用于调用 DeepSeek API。
+"""
+Todo查询功能。
+注意：
+    本文件保留的是 V3 版本的“手动 Tool Calling”实现，
+    主要用于学习和对比 V3 与 V4 Agent 的区别。
+
+V3 手动 Tool Calling流程：
+    用户输入
+        ↓
+    LLM判断需要调用哪个Tool
+        ↓
+    程序读取 tool_calls
+        ↓
+    程序手动执行Tool
+        ↓
+    程序手动创建 ToolMessage
+        ↓
+    再次调用LLM
+        ↓
+    最终回答
+~~~~~~~~~~~~
+V4 Agent流程：
+    用户输入
+        ↓
+    Agent
+        ↓
+    Agent自动选择Tool
+        ↓
+    Agent自动执行Tool
+        ↓
+    Agent自动继续判断是否需要调用Tool
+        ↓
+    最终回答
+
+因此：
+    1. 本文件不是V4 Agent的正式入口。
+    2. V4正式流程使用 ai/agent.py。
+    3. 本文件暂时保留，只用于学习和对比。
+"""
+
 
 from ai.client import llm       #LangChain，所以改为导入ChatOpenAI创建的llm对象。
 from langchain_core.messages import ToolMessage    #ToolMessage：保存Python执行工具后的结果，第二次发送给AI。

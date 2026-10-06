@@ -1,6 +1,8 @@
 """查询工具函数"""
 
-from langchain_core.tools import tool
+from langchain_core.tools import tool   #让我们能够使用 LangChain 的 @tool
+
+from ai.todo import addtodo_by_AI , updatetodo_by_AI, deletetodo_by_AI
 """
 从LangChain工具模块导入tool装饰器。
 
@@ -46,6 +48,30 @@ from db import (
 
 #以下5个工具都是LangChain Tool
 ### 1、定义函数，用来当AI调用的工具
+"""
+Tool的三个部分记成：
+    Tool
+    ├── name          → 我叫什么
+    ├── description   → 我能干什么、什么时候用我
+    └── args_schema   → 调用我需要什么参数
+~~~~~~~~~~~~~
+Agent 的一次 Tool 调用实际上经历:
+    用户自然语言
+          ↓
+    LLM理解用户意图
+          ↓
+    选择Tool
+          ↓
+    生成Tool参数
+          ↓
+    Agent执行Tool
+          ↓
+    Tool返回结果
+    
+每次 Tool 返回结果后，Agent 都会让 LLM 再判断一次“下一步做什么”。
+Chain 是程序决定流程，Agent 是 LLM 在运行过程中决定下一步。
+"""
+
 # 1.1 定义根据title查询数据的函数（工具1）
 @tool
 def search_todos_by_title(title, page, page_size):
@@ -204,7 +230,10 @@ ai_tools = [
     search_all_todos,
     search_todos_by_status,
     search_todos_by_deadline,
-    search_todos_advanced
+    search_todos_advanced,
+    addtodo_by_AI,
+    updatetodo_by_AI,
+    deletetodo_by_AI
 ]
 
 # LangChain工具列表
