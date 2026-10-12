@@ -175,23 +175,23 @@ def add_todo(title,deadline):
 
 ### 5、修改函数
 #根据id修改全部（即status和deadline）
-def update_all(id,status,deadline):
+def update_all(id,title,status,deadline):
     connection = None
     try:
         connection = get_connection()
         with connection.cursor() as cursor:
-            cursor.execute("update todos set status = %s,deadline = %s where id = %s;",
-                   (status,deadline,id))
+            cursor.execute("update todos set title = %s,status = %s,deadline = %s where id = %s;",
+                   (title,status,deadline,id))
             affected_row = cursor.rowcount   #就是把“这次 update 影响了几行”这个结果保存下来，等 cursor 关闭以后还能继续使用
             # rowcount返回一个整数，表示刚才执行的SQL影响（修改 / 删除 / 插入）了多少行
         connection.commit()
     except Exception:
         if connection is not None:
-            connection.rollback()
+            connection.rollback()   # 出错时回滚事务
         raise
     finally:
         if connection is not None:
-            connection.close()
+            connection.close()      # 无论成功还是失败，都关闭数据库连接
     return affected_row     #返回修改了几条数据
 
 

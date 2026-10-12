@@ -31,7 +31,7 @@ from langchain_core.tools import tool       #让我们能够使用 LangChain 的
 # 2. 将AI返回的JSON结果直接转换成对应的Pydantic对象
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-### 0、 定义AI匹配Todo id的公共辅助函数
+### 0、 定义AI匹配Todo id的公共辅助函数（后面函数要调用）
 def match_todo_id_by_AI(message):
     """
     根据用户自然语言描述，
@@ -74,7 +74,7 @@ def match_todo_id_by_AI(message):
 
 
 
-### 1、定义AI添加 Todo/数据 的业务函数
+### 1、定义AI添加 Todo/数据 的业务函数 → 装饰为agent可以调用的工具
 @tool
 def addtodo_by_AI(message):
     """
@@ -83,7 +83,6 @@ def addtodo_by_AI(message):
     """
     try:
         now_time = datetime.now()
-
         prompt = add_prompt()       #获取新增Todo的ChatPromptTemplate模板。,这里返回的是PromptTemplate对象，
                                     #不是最终发送给AI的完整提示词。真实数据会在chain.invoke()时传入。
         parser = PydanticOutputParser(pydantic_object=TodoAdd)          #创建Pydantic输出解析器。
@@ -95,7 +94,7 @@ def addtodo_by_AI(message):
         chain = prompt | llm | parser           # 创建LCEL Chain
         # 执行流程：PromptTemplate → ChatOpenAI(llm) → PydanticOutputParser →  TodoAdd对象
 
-        todo = chain.invoke(
+        todo = chain.invoke(        #★传入的参数是add_prompt()提示词模板中的变量
             {"now_time": now_time,   #对应add_prompt()中的{now_time}： 用于让AI理解“今天、明天”等时间表达。
              "message": message,     # 对应add_prompt()中的{message}：用户输入的自然语言，例如："明天上午10点提醒我买牛奶"
 
@@ -104,7 +103,7 @@ def addtodo_by_AI(message):
             } )
 
         new_id = add_todo(todo.title, todo.deadline)     #添加到数据库（上行代码创建的TodoAdd对象可以通过.的方式来取响应的值）
-        return get_todo_id(new_id)      #返回新增后的完整数据
+        return get_todo_id(new_id)                       #返回根据id查询新增后的完整数据
 
     #AI输出的数据不符合TodoAdd要求。 例如：{"title":"买牛奶"}，缺少deadline
     except ValidationError as e:
@@ -150,7 +149,7 @@ AI新增流程：
           MySQL
 """
 
-### 2、定义AI修改 Todo/数据 的业务函数
+### 2、定义AI修改 数据 的业务函数  → 装饰为agent可以调用的工具
 @tool
 def updatetodo_by_AI(message):
     """
@@ -216,6 +215,13 @@ def updatetodo_by_AI(message):
                 detail="todo not found"
             )
 
+        # 如果AI返回了新标题，就使用新标题；否则保留数据库原来的标题
+        title = (
+            todo.title
+            if todo.title is not None
+            else todo_data["title"]
+        )
+
         # 如果AI返回了新的status，就使用AI的；如果AI没有返回status，就保留数据库原来的status
         status = (
             todo.status
@@ -231,10 +237,11 @@ def updatetodo_by_AI(message):
         )
 
         # 根据数据库真实id修改数据
-        result = update_all(        #update_all()返回修改了几条数据
-            todo_data["id"],
-            status,
-            deadline
+        result = update_all(    #update_all返回修改的条数
+            todo_data["id"],  # 要修改的任务 ID
+            title,  # 新标题或原标题
+            status,  # 新状态或原状态
+            deadline  # 新截止时间或原截止时间
         )
 
         if result == 0:
@@ -292,7 +299,7 @@ update_all()
 """
 
 
-### 3、定义AI删除数据函数
+### 3、定义AI删除数据函数  → 装饰为agent可以调用的工具
 @tool
 def deletetodo_by_AI(message):
     """

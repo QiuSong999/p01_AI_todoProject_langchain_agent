@@ -230,6 +230,10 @@ LangChain 的：
     def xxx():
 会自动生成：工具的name、description、parameters schema，不需要自己写 JSON schema。
 """
+#⭐⭐选择让 Agent 自己选择查询方式，而不是让 searchtodo_by_AI() 在内部选择查询方式。
+#所以是把searchtodo_by_AI()对应的5种情况执行的函数都注册成工具
+
+
 ### 2、定义AI工具列表：用于把Python中的查询工具“介绍”给大模型
 ai_tools = [
     search_todos_by_title,
@@ -237,14 +241,11 @@ ai_tools = [
     search_todos_by_status,
     search_todos_by_deadline,
     search_todos_advanced,
-    addtodo_by_AI,
+
+    addtodo_by_AI,      #相较于前面的版本，本版本“增删改”也注册成工具
     updatetodo_by_AI,
     deletetodo_by_AI
 ]
 
 # LangChain工具列表
-# 把Python函数对象交给大模型
-# llm.bind_tools(ai_tools)会自动读取：
-# 1.工具名称
-# 2.函数说明
-# 3.参数结构
+

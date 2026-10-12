@@ -1,54 +1,31 @@
 """DeepSeek连接ask_deepseek()"""
 
+"""
+V4 agent版本的整体执行流程：
+    用户输入自然语言
+    例如：先查找未完成的买牛奶任务，再将它标记为完成
+           ↓
+    main.py / api.py
+    接收请求，进入后端业务流程
+           ↓
+    ai/agent.py
+    调用 LangChain Agent，交给模型判断下一步操作
+           ↓
+    ai/tools.py
+    向 Agent 提供可以调用的工具列表
+           ↓
+    ai/todo.py → db.py
+    执行业务逻辑，访问 MySQL 查询或修改 Todo
+           ↓
+    Agent 返回最终结果
+    模型根据工具执行结果组织自然语言回答
+    
+⭐⭐关键是 Agent 能够根据用户需求，自主决定调用哪个工具，并根据工具执行结果决定是否继续调用工具。
 
+例如，用户要求先查询再修改，Agent 可以先调用查询工具，获得查询结果后，再调用修改工具。
+这个过程不需要我们提前把所有步骤写死在固定流程里。
 """
-ai/client.py文件中
-    方式1：OpenAI SDK(以前的) ：代码 →  OpenAI客户端(client) →  HTTP请求 → DeepSeek API → 返回JSON   
-        创建：
-            client = OpenAI(    
-                api_key=os.getenv("deepseek_api_key"),
-                base_url="https://api.deepseek.com" )     
-        调用：  
-            response = client.chat.completions.create(
-                model="deepseek-flash",
-                messages=[
-                    {"role":"user",
-                    "content":"你好"}
-                ])
-        返回：
-            response = client.chat.completions.create(
-                model="deepseek-flash",
-                messages=[
-                    {"role":"user",
-                    "content":"你好"}
-                ])                              #******返回的是ChatCompletion对象
-        所以你需要自己取响应文本：response.choices[0].message.content
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
-    方式2：langchain(现在的)：代码  → LangChain → ChatOpenAI →  DeepSeek（langchain的方式）
-        创建： 
-            llm = ChatOpenAI(
-                model="deepseek-flash",                  
-                api_key=os.getenv("deepseek_api_key"), 
-                base_url="https://api.deepseek.com"  
-        调用
-            response = llm.invoke(message)      #******返回的是AIMessage对象
-        返回
-            llm.invoke(message.content)
-        
-~~~~~~~~~~~~
-#langchain方式先安装pip install langchain langchain-openai 两个包是为了让你的项目具备 LangChain 调用大模型的能力。
-0、LangChain可以使用：OpenAI、DeepSeek、通义、Moonshot、其他兼容OpenAI接口的模型
-1、langchain包：核心框架。提供：
-     PromptTemplate（提示词模板）
-     Chain（链）
-     Agent
-     Tool
-     Memory（后续学习）
-2、langchain-openai包：
-    连接 OpenAI 兼容模型的接口。
-    虽然名字叫 openai，但是它不只支持 OpenAI。
-    因为 DeepSeek 的 API 兼容 OpenAI 格式。
-"""
+
 
 import os
 from dotenv import load_dotenv              #用于加载.env文件
@@ -75,19 +52,27 @@ def ask_deepseek(message):
         # message会自动转换成模型需要的消息格式
         # 返回的是LangChain的AIMessage对象
         """
-        AIMessage(
-             content='',        #AI的回复文本
-             tool_calls=[
-               {
-                name:'search_all_todos',
-                args:{
-                  page:1,
-                  page_size:10
-                } 
-                }
-             ]
-            )
-            这个就是LangChain格式。
+        response是LangChain返回的AIMessage对象。
+            例如：
+                AIMessage(
+                    content='',
+                    tool_calls=[
+                               {'name':'search_todos_by_status',
+                                'args':{'status':'pending','page':1,'page_size':10},
+                                'id':'call_xxx'  
+                                "type": "tool_call"} 
+                                ],          #当只有一个工具时，tool_calls列表里面就一个大字典元素
+                    additional_kwargs={……},
+                    response_metadata={……},
+                    usage_metadata={……},
+                    ……          
+                        )
+        其中AIMessage里面可通过.方式取出的(属性)有：
+            1、content:消息内容
+            2、tool_calls:保存AI选择的工具信息。
+                （tool_calls里面的args保存AI生成的工具参数）
+            3、response_metadata:模型响应元数据
+            4、usage_metadata:Token 使用统计                      
         """
 
         return response.content      #AIMessage对象中的content属性，就是模型返回的文本内容

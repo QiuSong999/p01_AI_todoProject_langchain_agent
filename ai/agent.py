@@ -7,14 +7,18 @@ from langchain.agents import create_agent   #从 LangChain 导入创建 Agent �
 from ai.client import llm       #导入模型
 from ai.tools import ai_tools   #导入 供agent可使用的Tools
 
+#⭐改版本的核心是 Agent 根据用户需求决定调用哪个工具，以及是否继续调用，之前V2/3的核心是 LCEL Chain 按预先写好的流程执行；
+
 
 ### 1、 创建 Agent
 # 创建一个能够“思考 → 调用Tool → 获取结果 → 再思考 → 再调用Tool → 最终回答”的执行器。
 # Agent 本质上就是把“LLM + Tools + 自动循环”组合起来，让 LLM 自己决定下一步该做什么
-agent = create_agent(
-    model=llm,              #agent可使用的模型（用谁思考）
-    # model：负责思考和决定下一步做什么； tools：Agent可以调用的工具
-    tools=ai_tools,         #agent可使用的工具（能用什么）
+agent = create_agent(   #创建一个可以根据模型决策调用工具的 Agent 执行组件
+    model=llm,              #model为agent可使用的模型（用谁思考）
+                # model：负责思考和决定下一步做什么； tools：Agent可以调用的工具
+    tools=ai_tools,         #tools 是可以供模型选择调用的工具集合（能用什么）
+    #★ai_tools现在有8个工具，增删改查所有操作函数都注册成工具
+
     system_prompt="""你是一个Todo任务管理助手。    
     你的任务是帮助用户查询、新增、修改和删除Todo任务。
     当用户明确要求执行Todo操作时，应优先选择能够直接完成该操作的Tool。
@@ -29,8 +33,9 @@ SystemMessage(content="你是一个Todo助手，负责帮助用户管理Todo任�
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 创建一个 Agent，并告诉它“你使用这个大模型，并且可以使用这些工具”。
     Agent
-     ├── 大脑：llm
-     └── 工具箱：ai_tools
+     ├── 大脑：model
+     ├── 系统提示词：system_prompt
+     └── 工具箱：tools
            ├── 查询标题
            ├── 查询全部
            ├── 查询状态
@@ -40,7 +45,7 @@ SystemMessage(content="你是一个Todo助手，负责帮助用户管理Todo任�
 
 # system_prompt → Agent的长期规则 ； message → 本次用户请求（下面）
 
-### 2、AI todo总入口
+### 2、调用agent (AI todo总入口)
 def todo_by_AI(message):
     """
     AI Todo 总入口。
@@ -77,21 +82,28 @@ def todo_by_AI(message):
     """
     """
     print(result)输出的核心结构如下：（大量细节先去掉）
-        result
-           └── messages
-               ├──①HumanMessage:
+        result（dict）
+           └── messages（list）
+               ├──①HumanMessage:用户输入
                │                ↓
                │                HumanMessage(content="查询所有未完成的任务")
                │
                ├──②AIMessage:Agent决定调用哪个工具以及参数
                │                ↓
-               │                AIMessage(content='',
-               │                       tool_calls=[
+               │                AIMessage(
+               │                       content='',
+               │                       tool_calls=[ 
                │                           {'name': 'search_todos_by_status',
-               │                           'args': {'status': 'pending',
-               │                                   'page': 1,
-               │                                   'page_size': 50}}
-               │                               ])   
+               │                           'args': {'status': 'pending','page': 1,'page_size': 50}
+               │                           'id':'call_xxx',       
+               │                           "type": "tool_call"}
+               │                                    ],   #当只有一个工具时，tool_calls列表里面就一个大字典元素  
+               │                        additional_kwargs={……},
+               │                        response_metadata={……},
+               │                        usage_metadata={……},
+               │                        ……          
+               │                            )   
+               │                                 
                │
                ├──③ToolMessage：Tool 执行完成，把结果返回给 Agent。
                │                     ↓
@@ -99,6 +111,13 @@ def todo_by_AI(message):
                │                           content="{'data': [...], 'total': 13, ...}",
                │                           name='search_todos_by_status',
                │                           tool_call_id='...' )
+               │
+               │                    ↕ (关键!)
+               │
+               │                 【Agent 根据工具返回结果继续判断】 
+               │                         ├── 需要继续调用工具 → 重复②和③ ⤴
+               │                         └── 不需要继续调用工具 → 进入④
+               │                                ↓
                │
                └── ④ AIMessage：Agent 最终给用户的回答
                                     ↓
@@ -157,4 +176,17 @@ Agent → 负责决定“调用哪个Tool、什么时候调用、是否继续调
 而：Prompt + Parser → 辅助Tool内部的AI业务处理
 
 ⭐⭐⭐Agent负责“调度”，Tool负责“执行”，Prompt + Parser负责帮助Tool完成需要AI理解的具体业务。
+"""
+"""
+ai/agent.py
+Agent 根据用户需求决定调用什么工具
+    ↓
+ai/tools.py
+集中注册工具，并将工具提供给 Agent
+    ↓
+ai/todo.py
+工具的具体实现：解析参数、匹配目标、调用业务函数
+    ↓
+db.py → MySQL
+执行实际的数据查询、新增、修改和删除
 """

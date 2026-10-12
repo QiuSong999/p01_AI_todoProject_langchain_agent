@@ -216,6 +216,7 @@ class AITodoUpdate(BaseModel):      #用户可能只修改deadline/status，也�
     title: str = Field(min_length=1)	字段级	只影响 title 这一个字段
     model_config = ConfigDict(...)	    模型级	影响整个模型（所有字段）
     """
+    title: str | None = None    # 修改后的任务标题；用户没有要求修改时可以不传
     deadline:datetime | None = None     #deadline 可以有，也可以没有。
     status: Literal["pending", "completed"] | None = None           #status 可以有，也可以没有。
 # 如果 extra="ignore"（默认）：这些多余字段被静默丢弃，你根本不知道 AI"乱返回"了。
@@ -249,8 +250,6 @@ class AITodoMatch(BaseModel):
         根据id修改或删除数据库数据
     """
     id: int         # 数据库中目标Todo的唯一编号。
-
-
 
 """
 打开http://127.0.0.1:8000/docs，发现下面有Schema，可是里面怎么有
