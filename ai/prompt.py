@@ -28,6 +28,33 @@ PromptTemplate：用于普通字符串Prompt模板。
 """
 
 """⭐下面定义的函数均不直接接收参数。因为LangChain的设计是：先创建模板 → 后面调用format()填充真实数据"""
+
+
+"""
+V4 Agent 版本说明：
+以下四个 Prompt 模板在当前 V4 agent版本中已不再使用：
+
+1. intent_prompt()
+   V3 Chain 需要通过独立的意图识别 Prompt 判断用户想执行什么操作。
+   V4 Agent 可以根据用户请求和已注册的工具，自主判断应该调用哪个工具。
+2. search_prompt()
+   V3 Chain 通过 Prompt 指导 AI 选择查询工具。
+   V4 Agent 可以根据工具名称、描述和参数定义，自主选择合适的查询工具。
+3. search_user_prompt()
+   V3 Chain 使用独立的用户 Prompt，将当前时间和用户问题组合起来，
+   帮助 AI 理解“今天、明天”等日期表达。
+   当前 V4 版本没有调用这个模板；相关时间解析由实际使用的工具及其内部逻辑负责。
+4. search_result_prompt()
+   V3 Chain 使用独立的 Prompt 指导 AI 根据查询结果生成回答。
+   V4 Agent 可以根据工具返回结果继续决策，并生成最终回答。
+
+注意：
+以上说明针对当前 V4 代码。
+如果后续代码重新调用这些模板，需要重新评估是否保留。
+"""
+
+
+
 #~~~~~~~~~~~~~~~~~~意图识别类提示词~~~~~~~~~~~~~~~~~~
 ### 1、创建“判断用户操作(add/update/delete/search)”的聊天提示词模板
 # 作用：创建一个LangChain ChatPromptTemplate对象。
@@ -64,6 +91,8 @@ def intent_prompt():     #创建一个LangChain提示词模板对象
 ### 2、负责生成“AI查询Todo时选择工具”的提示词模板。
 #作用：创建一个PromptTemplate。这个模板告诉AI：你有哪些查询工具，用户提出查询需求时应该选择哪个工具。
 #这里不查询数据库。这里只负责告诉AI如何选择工具。
+
+
 def search_prompt():
     # 使用ChatPromptTemplate创建聊天消息形式的Prompt。
     # 后面调用.invoke()后，可以通过.messages获取SystemMessage。
@@ -148,9 +177,11 @@ def search_result_prompt():
             """
         )
     ])
+#上面提示词都不再需要，因为
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #~~~~~~~~~~~~~~~~~~Todo操作类提示词(增、删、改)~~~~~~~~~~~~~~~~~~
-### 5、负责生成AI新增Todo提示词模板
+### 1、负责生成AI新增Todo提示词模板
 #作用：让AI从用户自然语言中提取：title deadline，后续交给TodoAdd校验，然后写入数据库。
 def add_prompt():
     return ChatPromptTemplate.from_messages([
@@ -191,7 +222,7 @@ def add_prompt():
     # {message}：调用chain.invoke()时传入用户真实的Todo新增要求。
 
 
-### 6、负责生成AI修改Todo提示词模板
+### 2、负责生成AI修改Todo提示词模板
 #作用：创建AI修改Todo的ChatPromptTemplate模板。第一次调用AI。只负责提取用户想修改的字段。
 #不负责判断修改哪一条todo。找具体todo由第二次AI完成。
 def update_prompt():
@@ -242,7 +273,7 @@ AITodoUpdate对象
 """
 
 
-### 7、负责AI匹配目标Todo提示词模板（可充当删除提示词模板）
+### 3、负责AI匹配目标Todo提示词模板（可充当删除提示词模板）
 #作用：修改Todo、删除Todo时，根据用户描述，从数据库已有Todo列表里面找到目标id。
 #这里只负责生成匹配提示词。不查询数据库。不删除、不修改数据。
 

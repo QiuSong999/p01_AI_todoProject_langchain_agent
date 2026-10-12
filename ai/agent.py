@@ -42,7 +42,6 @@ SystemMessage(content="你是一个Todo助手，负责帮助用户管理Todo任�
            ├── 查询截止时间
            └── 高级查询
 """
-
 # system_prompt → Agent的长期规则 ； message → 本次用户请求（下面）
 
 ### 2、调用agent (AI todo总入口)
@@ -189,4 +188,16 @@ ai/todo.py
     ↓
 db.py → MySQL
 执行实际的数据查询、新增、修改和删除
+"""
+
+#agent能做的事情：
+"""
+结合本版本的项目的代码，Agent 的 6 个作用分别通过以下机制实现。
+     作用                     如何实现        
+     1. 理解用户意图        大模型根据用户输入和上下文理解需求。     
+     2. 选择合适的工具      create_agent(model=llm, tools=ai_tools)将模型和工具集合交给 Agent，由模型决定调用哪个工具。     
+     3. 提取工具参数        模型根据工具的名称、描述、参数定义，从用户语句中生成调用参数。     
+     4. 调用工具并获取结果   LangChain Agent 执行模型提出的工具调用，运行对应的 Python 函数，获得 ToolMessage。     
+     5. 根据结果继续决策     Agent 将工具执行结果交给模型，模型判断是否还需要调用其他工具；需要时继续调用。     
+     6. 生成最终回答        模型根据用户请求和工具执行结果生成最终回答，代码通过 result["messages"][-1].content 提取文本。     
 """
