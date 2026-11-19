@@ -29,7 +29,7 @@ from langchain_core.tools import tool       #让我们能够使用 LangChain 的
 # 作用：
 # 1. 根据指定的Pydantic模型（例如TodoAdd、AIAction）检查AI输出格式。
 # 2. 将AI返回的JSON结果直接转换成对应的Pydantic对象
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 ### 0、 定义AI匹配Todo id的公共辅助函数（后面函数要调用）
 def match_todo_id_by_AI(message):
@@ -72,7 +72,7 @@ def match_todo_id_by_AI(message):
 
     return result.id        # 返回匹配到的Todo id
 
-
+#==================================================================
 
 ### 1、定义AI添加 Todo/数据 的业务函数 → 装饰为agent可以调用的工具
 @tool
@@ -163,7 +163,7 @@ def updatetodo_by_AI(message):
     try:
         now_time = datetime.now()
 
-        prompt = update_prompt()        #获取AI修改Todo的Prompt模板。
+        prompt = update_prompt()        #Prompt模板：提取要修改的字段。
         # 获取AI修改Todo的ChatPromptTemplate模板。返回的是ChatPromptTemplate对象，不是最终发送给AI的消息。真实数据会在chain.invoke()时传入。
 
         parser = PydanticOutputParser(pydantic_object=AITodoUpdate)       # 创建Pydantic输出解析器。

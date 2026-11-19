@@ -1,3 +1,4 @@
+
 """
     tools.py
         ↓
@@ -5,10 +6,10 @@
     “你现在拥有这些工具”
 ★★★Agent负责确定 Tool 的执行顺序，Prompt 和 Parser 辅助 Tool 工作
 """
-
 from langchain_core.tools import tool   #让我们能够使用 LangChain 的 @tool
+from typing import Literal
+from ai.todo import addtodo_by_AI , updatetodo_by_AI, deletetodo_by_AI  # 增删改也注册成工具
 
-from ai.todo import addtodo_by_AI , updatetodo_by_AI, deletetodo_by_AI
 """
 从LangChain工具模块导入tool装饰器。
 
@@ -20,8 +21,11 @@ from ai.todo import addtodo_by_AI , updatetodo_by_AI, deletetodo_by_AI
 
 例如：
 @tool
-def search_todos_by_title(title,page,page_size):
-#
+def search_todos_by_title(): 
+        title：str,
+        page: int = 1,
+        page_size: int = 10
+
 LangChain会自动转换成AI可以调用的工具：
 {
     name: "search_todos_by_title",
@@ -56,7 +60,7 @@ tools=ai_tools[工具列表]
     但是用户提供的是“买牛奶”，而不是数字 ID。
     此时，Agent 必须想办法确定 todo_id。它可能从已有上下文获取 ID，也可能尝试查询，
     但如果没有对应的查询工具和正确的调用流程，就无法可靠地完成删除。
-    
+
     当前 V4 agent的设计如何解决？
         用户输入
         “删除买牛奶”
@@ -71,6 +75,7 @@ tools=ai_tools[工具列表]
         调用 delete_todo(todo_id) 执行数据库删除
     这样，Agent 不需要直接处理底层数据库函数的细节。
     你把自然语言处理和业务流程封装在一个工具中，Agent 只需要知道这个工具的用途和参数。
+
 2、查询工具为什么可以直接注册？
     查询工具本身可能已经是适合 Agent 使用的函数。
     例如：
@@ -78,26 +83,25 @@ tools=ai_tools[工具列表]
         def search_todos_by_status(status: str, page: int = 1, page_size: int = 50):
             '''根据任务状态查询待办事项。'''
         ...
-
+    
     它接收 status、page 等参数，能够直接完成一项查询需求，因此可以注册给 Agent。
     不过，这个 Tool 内部仍然会调用数据库函数获取数据。
     所以，你当前 V4 中同时存在两种情况：
     查询工具：Agent 可以直接调用已经封装好的查询 Tool。
     新增、修改、删除工具：先通过 AI 解析用户描述或匹配目标，再调用数据库函数。
     两种设计并不矛盾，关键是 Tool 的输入参数是否适合直接从用户请求中获得，以及工具是否封装好了完成业务所需的步骤。
-    
-    实际上，两种设计都可以。
-    
-    设计方式        Agent 需要调用什么                                    谁负责组织操作流程
-直接注册数据库函数   查询、新增、修改、删除等底层工具                            Agent 负责组合多个工具
-注册业务函数      addtodo_by_AI、updatetodo_by_AI、deletetodo_by_AI 等   业务函数负责内部流程，Agent 负责选择业务工具
 
-	
-例如，完全可以把 delete_todo(todo_id) 直接注册为 Tool，再让 Agent 先查询标题、获取 ID，然后调用删除工具。
-因此，V4 并不是因为 Agent 做不到多步操作，才封装增删改。 
+    实际上，两种设计都可以。
+-----------------------------------------------------------------------------------------------------------
+    设计方式                    Agent 需要调用什么                                谁负责组织操作流程
+直接注册数据库函数           查询、新增、修改、删除等底层工具                         Agent 负责组合多个工具
+   注册业务函数    addtodo_by_AI、updatetodo_by_AI、deletetodo_by_AI 等   业务函数负责内部流程，Agent 负责选择业务工具
+-----------------------------------------------------------------------------------------------------------
+    例如，完全可以把 delete_todo(todo_id) 直接注册为 Tool，再让 Agent 先查询标题、获取 ID，然后调用删除工具。
+因此，V4 并不是因为 Agent 做不到多步操作，才封装增删改。
 而是选择把复杂的业务流程放进业务函数，让 Agent 调用时更简单，也更容易集中控制。
 
-你只需要先记住一个原则：数据库函数负责具体的数据操作，业务函数负责组织业务步骤，Agent 负责理解用户需求并选择合适的工具。 
+你只需要先记住一个原则：数据库函数负责具体的数据操作，业务函数负责组织业务步骤，Agent 负责理解用户需求并选择合适的工具。
 查询可以直接注册数据库函数，增删改也可以直接注册；是否封装，取决于业务流程的复杂程度和你希望由谁来控制流程。
 """
 
@@ -122,7 +126,7 @@ Tool的三个部分记成：
     ├── name          → 我叫什么
     ├── description   → 我能干什么、什么时候用我
     └── args_schema   → 调用我需要什么参数
-~~~~~~~~~~~~~
+~~~~~~~~~~
 Agent 的一次 Tool 调用实际上经历:
     用户自然语言
           ↓
@@ -135,14 +139,18 @@ Agent 的一次 Tool 调用实际上经历:
     Agent执行Tool
           ↓
     Tool返回结果
-    
+
 每次 Tool 返回结果后，Agent 都会让 LLM 再判断一次“下一步做什么”。
 Chain 是程序决定流程，Agent 是 LLM 在运行过程中决定下一步。
 """
 
 # 1.1 定义根据title查询数据的函数（工具1）
 @tool
-def search_todos_by_title(title, page, page_size):
+def search_todos_by_title(
+        title: str,
+        page: int = 1,
+        page_size: int = 10
+):
     """
     给AI使用的工具函数。
     注意：这个函数不是给用户直接调用的。
@@ -162,9 +170,13 @@ def search_todos_by_title(title, page, page_size):
         "page_size": page_size
     }
 
+
 # 1.2 定义查询所有Todo数据的函数 （工具2）
 @tool
-def search_all_todos(page, page_size):
+def search_all_todos(
+        page: int = 1,
+        page_size: int = 10
+):
     """
     给AI使用的工具函数。
     作用：
@@ -180,9 +192,14 @@ def search_all_todos(page, page_size):
         "page_size": page_size
     }
 
+
 # 1.3 定义根据status查询函数（工具3）
 @tool
-def search_todos_by_status(status, page, page_size):
+def search_todos_by_status(
+        status: Literal["pending", "completed"],
+        page: int = 1,
+        page_size: int = 10
+):
     """
     根据任务状态查询Todo。
 
@@ -207,9 +224,15 @@ def search_todos_by_status(status, page, page_size):
         "page_size": page_size
     }
 
+
 # 1.4 定义根据deadline查询数据的函数（工具4）
 @tool
-def search_todos_by_deadline(start_time, end_time, page, page_size):
+def search_todos_by_deadline(
+        start_time: str,
+        end_time: str,
+        page: int = 1,
+        page_size: int = 10
+):
     """
     给AI使用的工具函数。
     作用：
@@ -222,7 +245,7 @@ def search_todos_by_deadline(start_time, end_time, page, page_size):
         page_size
     )
 
-    total = get_todo_deadline_count(start_time,end_time)
+    total = get_todo_deadline_count(start_time, end_time)
 
     return {
         "data": todos,
@@ -231,17 +254,19 @@ def search_todos_by_deadline(start_time, end_time, page, page_size):
         "page_size": page_size
     }
 
+
 # 1.5 复合查询 （工具5）
 # 上面4个：一个工具 = 一个条件。例如：status → search_todos_by_status
 # 现在：一个工具 = 多个可选条件。例如：title + status + deadline
 @tool
 def search_todos_advanced(
-        title=None,
-        status=None,
-        start_time=None,
-        end_time=None,
-        page=1,
-        page_size=10):
+        title: str | None = None,
+        status: Literal["pending", "completed"] | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
+        page: int = 1,
+        page_size: int = 10
+):
     """
     根据多个条件组合查询Todo。
 
@@ -264,7 +289,6 @@ def search_todos_advanced(
         page_size:
             每页数量。
     """
-
     todos = get_todo_advanced(      #根据多个可选条件查询具体的 Todo 数据
         title,
         status,
@@ -281,10 +305,13 @@ def search_todos_advanced(
         end_time
     )
 
-    return {"data": todos,
+    return {
+        "data": todos,
         "total": total,
         "page": page,
-        "page_size": page_size}
+        "page_size": page_size
+    }
+
 
 """
 LangChain 的：
@@ -292,6 +319,7 @@ LangChain 的：
     def xxx():
 会自动生成：工具的name、description、parameters schema，不需要自己写 JSON schema。
 """
+
 #⭐⭐选择让 Agent 自己选择查询方式，而不是让 searchtodo_by_AI() 在内部选择查询方式。
 #所以是把searchtodo_by_AI()对应的5种情况执行的函数都注册成工具
 
@@ -310,4 +338,3 @@ ai_tools = [
 ]
 
 # LangChain工具列表
-
